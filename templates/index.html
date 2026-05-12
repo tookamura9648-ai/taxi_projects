@@ -17,8 +17,8 @@
         .btn { width: 100%; padding: 15px; border: none; border-radius: 10px; font-size: 1rem; cursor: pointer; font-weight: bold; margin-bottom: 10px; }
         .btn-location { background-color: #28a745; color: white; }
         .btn-submit { background-color: #007bff; color: white; }
-        .radio-group { display: flex; gap: 10px; flex-wrap: wrap; padding: 5px 0; }
-        .radio-group label { font-weight: normal; font-size: 0.9rem; display: flex; align-items: center; gap: 5px; }
+        .radio-group { display: flex; flex-direction: column; gap: 8px; padding: 5px 0; }
+        .radio-group label { font-weight: normal; font-size: 1rem; display: flex; align-items: center; gap: 8px; background: #f9f9f9; padding: 10px; border-radius: 8px; border: 1px solid #eee; }
         .hint { font-size: 0.8rem; color: #666; margin-bottom: 10px; text-align: center; }
     </style>
 </head>
@@ -43,11 +43,13 @@
     </div>
 
     <div class="input-group">
-        <label>ご希望の機材</label>
+        <label>ご希望の機材・スタイル</label>
         <div class="radio-group">
-            <label><input type="radio" name="equipment" value="普通車椅子" checked> 普通車椅子</label>
-            <label><input type="radio" name="equipment" value="リクライニング車椅子"> リクライニング</label>
-            <label><input type="radio" name="equipment" value="ストレッチャー"> ストレッチャー</label>
+            <label><input type="radio" name="equipment" value="自前の車椅子を利用" checked> 👨‍🦽 自前の車椅子を利用</label>
+            <label><input type="radio" name="equipment" value="普通車椅子（貸出希望）"> ♿ 普通車椅子（貸出希望）</label>
+            <label><input type="radio" name="equipment" value="リクライニング車椅子（貸出希望）"> 🛋️ リクライニング（貸出希望）</label>
+            <label><input type="radio" name="equipment" value="ストレッチャー（貸出希望）"> 🚑 ストレッチャー（貸出希望）</label>
+            <label><input type="radio" name="equipment" value="機材不要（歩行・介助のみ）"> 🚶 機材不要（歩行・介助のみ）</label>
         </div>
     </div>
 
@@ -69,19 +71,15 @@
 
         marker = L.marker(initialPos).addTo(map);
 
-        // ★追加：地図をクリックした時のイベント
         map.on('click', function(e) {
             updateMarker(e.latlng.lat, e.latlng.lng);
         });
     }
 
-    // ピンの位置と座標データを更新する共通関数
     function updateMarker(lat, lng) {
         currentCoords.lat = lat;
         currentCoords.lng = lng;
-        const newPos = [lat, lng];
-        marker.setLatLng(newPos);
-        // map.panTo(newPos); // 必要ならクリックした場所を中央に寄せる
+        marker.setLatLng([lat, lng]);
     }
 
     function getCurrentLocation() {
@@ -107,7 +105,7 @@
         if (!currentCoords.lat) { alert("地図で場所を指定してください"); return; }
         if (!name || !time) { alert("お名前と時間を入力してください"); return; }
 
-        if (confirm("送信しますか？")) {
+        if (confirm("送信しますか？\n\n機材：" + equipment)) {
             fetch('/api/reserve', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
