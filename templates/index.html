@@ -3,17 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>介護タクシー配車依頼 (OSM版)</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <title>介護タクシー配車依頼</title>
+    <script src="https://maps.googleapis.com/maps/api/js?v=3.exp&callback=initMap" async defer></script>
     <style>
         body { font-family: sans-serif; margin: 0; padding: 20px; background-color: #f0f8ff; }
         .container { max-width: 500px; margin: 0 auto; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        h1 { font-size: 1.5rem; color: #007bff; text-align: center; }
+        h1 { font-size: 1.5rem; text-align: center; color: #007bff; }
         .input-group { margin-bottom: 15px; }
         label { display: block; margin-bottom: 5px; font-weight: bold; color: #555; }
         input[type="text"], input[type="time"] { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
-        #map { width: 100%; height: 250px; border-radius: 10px; margin-bottom: 15px; border: 1px solid #ddd; }
+        #map { width: 100%; height: 250px; border-radius: 10px; margin-bottom: 15px; background-color: #eee; }
         .btn { width: 100%; padding: 15px; border: none; border-radius: 10px; font-size: 1rem; cursor: pointer; font-weight: bold; margin-bottom: 10px; }
         .btn-location { background-color: #28a745; color: white; }
         .btn-submit { background-color: #007bff; color: white; }
@@ -34,11 +33,6 @@
     <div id="map"></div>
 
     <button type="button" class="btn btn-location" onclick="getCurrentLocation()">📍 現在地を取得する</button>
-
-    <div class="input-group">
-        <label for="address">お迎え場所（自動取得）</label>
-        <input type="text" id="address" placeholder="地図から住所が自動入力されます">
-    </div>
 
     <div class="input-group">
         <label for="pickupTime">お迎え希望時間</label>
@@ -62,86 +56,62 @@
     let marker;
     let currentCoords = { lat: null, lng: null };
 
-    // OSM地図の初期化
     function initMap() {
-        // 初期表示は滋賀県庁付近
-        const initialView = [35.0045, 135.8685];
-        map = L.map('map').setView(initialView, 15);
-
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; OpenStreetMap contributors'
-        }).addTo(map);
-
-        marker = L.marker(initialView).addTo(map);
+        const shiga = { lat: 35.0045, lng: 135.8685 };
+        map = new google.maps.Map(document.getElementById("map"), {
+            zoom: 15,
+            center: shiga,
+            disableDefaultUI: true,
+            zoomControl: true
+        });
+        marker = new google.maps.Marker({ map: map });
     }
 
-    // 現在地取得と住所変換
     function getCurrentLocation() {
         if (!navigator.geolocation) {
             alert("位置情報に対応していません");
             return;
         }
-
         navigator.geolocation.getCurrentPosition((position) => {
             currentCoords = {
                 lat: position.coords.latitude,
                 lng: position.coords.longitude
             };
-
-            const pos = [currentCoords.lat, currentCoords.lng];
-            map.setView(pos, 16);
-            marker.setLatLng(pos);
-
-            // Nominatim APIを使って座標から住所を取得
-            fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${currentCoords.lat}&lon=${currentCoords.lng}&zoom=18&addressdetails=1`, {
-                headers: { 'Accept-Language': 'ja' } // 日本語で取得
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data && data.display_name) {
-                    // 住所を入力欄にセット
-                    document.getElementById('address').value = data.display_name;
-                }
-            })
-            .catch(err => console.error("住所取得エラー:", err));
-
+            const latlng = new google.maps.LatLng(currentCoords.lat, currentCoords.lng);
+            map.setCenter(latlng);
+            marker.setPosition(latlng);
         }, () => {
             alert("位置情報の取得に失敗しました");
         });
     }
 
-    // 送信処理
     function submitReservation() {
         const name = document.getElementById('userName').value;
         const time = document.getElementById('pickupTime').value;
-        const address = document.getElementById('address').value;
         const equipment = document.querySelector('input[name="equipment"]:checked').value;
 
         if (!currentCoords.lat) { alert("現在地を取得してください"); return; }
         if (!name || !time) { alert("入力してください"); return; }
 
-        if (confirm("この内容で送信しますか？")) {
+        const message = `送信しますか？\nお名前：${name}様\n時間：${time}\n機材：${equipment}`;
+        if (confirm(message)) {
             fetch('/api/reserve', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     name: name,
                     time: time,
-                    address: address,
                     equipment: equipment,
                     coords: currentCoords
                 })
             })
             .then(res => {
                 if (res.ok) alert("送信しました！");
-                else alert("保存に失敗しました（DBエラー）。");
+                else alert("サーバー側でエラー（DB未接続など）が発生しました。");
             })
             .catch(err => alert("通信エラーが発生しました。"));
         }
     }
-
-    // 画面読み込み時に地図を初期化
-    window.onload = initMap;
 </script>
 
 </body>
