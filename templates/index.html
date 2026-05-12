@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>介護タクシー配車予約</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body { margin: 0; padding: 0; font-family: sans-serif; background-color: #f8f9fa; }
+        /* 地図の高さを強制的に400pxに固定 */
+        #map { height: 400px !important; width: 100%; border-bottom: 2px solid #ddd; background: #eee; }
+        .form-container { padding: 20px; max-width: 500px; margin: 0 auto; }
+        .input-group { margin-bottom: 15px; }
+        .input-group label { display: block; margin-bottom: 5px; font-weight: bold; }
+        .input-group input { width: 100%; padding: 12px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; }
+        .btn { display: block; width: 100%; padding: 15px; border: none; border-radius: 12px; font-size: 1.1em; font-weight: bold; cursor: pointer; }
+        .btn-location { background-color: #fff; color: #007bff; border: 2px solid #007bff; margin-bottom: 15px; }
+        .btn-submit { background-color: #007bff; color: white; margin-top: 10px; }
+        .status-text { font-size: 0.85em; color: #666; margin-top: 5px; }
+    </style>
+</head>
+<body>
+
+    <div id="map"></div>
+
+    <div class="form-container">
+        <button type="button" class="btn btn-location" onclick="getLocation()">現在地を取得してお迎え場所に設定</button>
+        <div id="status" class="status-text"></div>
+        <hr style="margin: 20px 0; border: 0; border-top: 1px solid #ddd;">
+        <div class="input-group">
+            <label for="userName">お名前</label>
+            <input type="text" id="userName" placeholder="例：山田 太郎">
+        </div>
+        <div class="input-group">
+    <label for="pickupTime">お迎え希望時間</label>
+    <input type="time" id="pickupTime">
+</div>
+
+<div class="input-group">
+    <label>ご希望の機材</label>
+    <div style="display: flex; gap: 15px; flex-wrap: wrap; padding-top: 5px;">
+        <label style="font-weight: normal; font-size: 15px;">
+            <input type="radio" name="equipment" value="普通車椅子" checked> 普通車椅子
+        </label>
+        <label style="font-weight: normal; font-size: 15px;">
+            <input type="radio" name="equipment" value="リクライニング車椅子"> リクライニング
+        </label>
+        <label style="font-weight: normal; font-size: 15px;">
+            <input type="radio" name="equipment" value="ストレッチャー"> ストレッチャー
+        </label>
+    </div>
+</div>
+<button type="button" class="btn btn-submit" onclick="submitReservation()">この内容でお迎えを依頼する</button>
+
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // 1. 地図の初期化
+        const map = L.map('map').setView([35.0045, 135.8686], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        let marker;
+        let currentCoords = { lat: null, lng: null };
+
+        // 2. 現在地取得関数
+        function getLocation() {
+            const status = document.getElementById('status');
+            status.textContent = "位置情報を取得中...";
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    currentCoords = { lat: lat, lng: lng };
+                    if (marker) map.removeLayer(marker);
+                    map.setView([lat, lng], 17);
+                    marker = L.marker([lat, lng], { draggable: true }).addTo(map);
+                    marker.bindPopup("ここでお待ちですか？").openPopup();
+                    marker.on('dragend', function(e) {
+                        const newPos = e.target.getLatLng();
+                        currentCoords = { lat: newPos.lat, lng: newPos.lng };
+                    });
+                    status.textContent = "取得完了";
+                },
+                (error) => { status.textContent = "取得失敗。地図を動かしてください。"; },
+                { enableHighAccuracy: true }
+            );
+        }
+
+        // 3. 送信関数
+        function submitReservation() {
+            const name = document.getElementById('userName').value;
+            const time = document.getElementById('pickupTime').value;
+            
+            // ↓ ここを追加：チェックされているラジオボタンの値を取得
+            const equipment = document.querySelector('input[name="equipment"]:checked').value;
+
+            if (!currentCoords.lat) { alert("現在地を取得してください"); return; }
+            if (!name || !time) { alert("入力してください"); return; }
+
+            // 前回の確認ダイアログ（message）を使っている場合は、ここにも追記
+            const message = `
+            【予約内容の確認】
+            お名前：${name} 様
+            お時間：${time}
+            機材：${equipment}  <-- ここも追加しておくと親切です
+            場所：緯度 ${currentCoords.lat.toFixed(6)}, 経度 ${currentCoords.lng.toFixed(6)}
+
+            この情報を管理システムへ送信しますか？
+                `;
+
+    if(confirm(message)) {
+        fetch('/api/reserve', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                name: name, 
+                time: time, 
+                equipment: equipment, // <-- これを忘れずに！
+                coords: currentCoords 
+            })
+        })
+        .then(res => res.json())
+        .then(data => { alert("送信しました！"); })
+        .catch(err => { alert("エラーが発生しました"); });
+    }
+}
+    </script>
+</body>
+</html>

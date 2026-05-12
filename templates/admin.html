@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>【管理画面】配車依頼一覧</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; background: #eee; }
+        table { width: 100%; border-collapse: collapse; background: white; }
+        th, td { padding: 12px; border: 1px solid #ccc; text-align: left; }
+        th { background: #333; color: white; }
+        .map-link { color: #007bff; text-decoration: none; font-weight: bold; }
+        .refresh-btn { padding: 10px 20px; margin-bottom: 20px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>お迎え依頼一覧</h1>
+    <button class="refresh-btn" onclick="location.reload()">最新の情報に更新</button>
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>お名前</th>
+                <th>希望時間</th>
+                <th>現在地確認</th>
+                <th>受付時刻</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for res in reservations %}
+            <tr>
+                <td>{{ res[0] }}</td>
+                <td>{{ res[1] }} 様</td>
+                <td>{{ res[2] }}</td>
+                <td>
+                    <a href="https://www.google.com/maps?q={{ res[3] }},{{ res[4] }}" target="_blank" class="map-link">
+                        📍 Googleマップで開く
+                    </a>
+                </td>
+                <td>{{ res[5] }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>
