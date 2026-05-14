@@ -21,6 +21,7 @@
                 <th>ID</th>
                 <th>お名前</th>
                 <th>希望時間</th>
+                <th>機材</th> 
                 <th>現在地確認</th>
                 <th>受付時刻</th>
             </tr>
@@ -31,6 +32,7 @@
                 <td>{{ res.id }}</td>
                 <td>{{ res.name }} 様</td>
                 <td>{{ res.pickup_time }}</td>
+                <td>{{ res.equipment }}</td> 
                 <td>
                     <a href="https://www.google.com/maps?q={{ res.lat }},{{ res.lng }}" target="_blank">
                         📍 Googleマップで開く
