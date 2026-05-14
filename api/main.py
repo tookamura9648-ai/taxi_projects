@@ -24,22 +24,35 @@ def init_db():
 
 # お客様からのデータ受信用API
 @app.route('/api/reserve', methods=['POST'])
+import os
+from flask import Flask, request, jsonify
+from supabase import create_client, Client
+
+app = Flask(__name__)
+
+# Vercelに登録した「名前」で呼び出します
+url: str = os.environ.get("SUPABASE_URL")
+key: str = os.environ.get("SUPABASE_KEY")
+supabase: Client = create_client(url, key)
+
+@app.route('/api/reserve', methods=['POST'])
 def reserve():
     data = request.json
-    name = data.get('name')
-    pickup_time = data.get('time')
-    lat = data.get('coords').get('lat')
-    lng = data.get('coords').get('lng')
-    created_at = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-
-    conn = sqlite3.connect('database.db')
-    cursor = conn.cursor()
-    cursor.execute('INSERT INTO reservations (name, pickup_time, lat, lng, created_at) VALUES (?, ?, ?, ?, ?)',
-                   (name, pickup_time, lat, lng, created_at))
-    conn.commit()
-    conn.close()
-    
-    return jsonify({"status": "success"})
+    try:
+        # Supabaseの 'reservations' テーブルに保存
+        supabase.table('reservations').insert({
+            "name": data['name'],
+            "pickup_time": data['time'],
+            "equipment": data['equipment'],
+            "lat": data['coords']['lat'],
+            "lng": data['coords']['lng'],
+            "status": "pending"
+        }).execute()
+        
+        return jsonify({"status": "success"}), 200
+    except Exception as e:
+        print(f"Error: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 # 管理画面（PCで見る画面）
 @app.route('/admin')
